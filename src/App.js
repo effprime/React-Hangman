@@ -181,33 +181,26 @@ class GuessForm extends Component {
   }
 }
 
-class HangmanWord extends Component {
-
-  render() {
-    const letters = []
-    for (let [index, letterObj] of this.props.word.entries()) {
-      letters.push(
-        <span key={index} className="hangmanLetter">{letterObj.guessed ? letterObj.letter.toUpperCase() : '_'}</span>
-      )
-    }
-
-    return (
-      <div className="hangmanWord">
-        {letters}
-      </div>
+function HangmanWord(props) {
+  const letters = []
+  for (let [index, letterObj] of props.word.entries()) {
+    letters.push(
+      <span key={index} className="hangmanLetter">{letterObj.guessed ? letterObj.letter.toUpperCase() : '_'}</span>
     )
   }
+  return (
+    <div className="hangmanWord">
+      {letters}
+    </div>
+  )
 }
 
-class ImageDisplay extends Component {
-
-  render() {
-    return (
-      <div className="imageDisplay">
-        <img alt={`Incorrect guesses: ${this.props.step}`}className="hangmanImage" src={`images/${this.props.step}.jpg`}></img>
-      </div>
-    )
-  }
+function ImageDisplay(props) {
+  return (
+    <div className="imageDisplay">
+      <img alt={`Incorrect guesses: ${props.step}`}className="hangmanImage" src={`images/${props.step}.jpg`}></img>
+    </div>
+  )
 }
 
 export default App;
