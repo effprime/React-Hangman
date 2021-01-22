@@ -6,45 +6,114 @@ class App extends Component {
     super(props)
     this.state = {
       step: 0,
-      running: false,
-      word: null,
+      stage: "input",
+      word: [],
       guess: null
     }
 
-    this.handleFormStateChange = this.handleFormStateChange.bind(this)
+    this.handleStateChange = this.handleStateChange.bind(this)
     this.startGame = this.startGame.bind(this)
+    this.handleWordStateChange = this.handleWordStateChange.bind(this)
     this.processGuess = this.processGuess.bind(this)
   }
 
-  handleFormStateChange(stateKey, value) {
+  maxStep = 10
+
+  handleStateChange(stateKey, value) {
     this.setState( {[stateKey]: value} )
   }
 
+  handleWordStateChange(value) {
+    const word = []
+    for (let i=0; i < value.length; i++) {
+      word.push({
+          letter: value.charAt(i).toLowerCase(),
+          guessed: false
+      })
+    }
+    this.setState({word: word})
+  }
+
   startGame() {
-    if (!this.state.word) {
+    if (this.state.word.length === 0) {
       alert("Please enter a word!")
       return
     }
-
-    // alert("Starting!")
-    this.setState({running: true})
+    
+    this.setState({stage: "playing"})
   }
 
   processGuess() {
-    console.log(this.state.guess)
+    let successfulGuess = false
+    let allGuessed = true
+    const wordCopy = this.state.word
+
+    for (let letterObj of wordCopy) {
+      if (letterObj.letter === this.state.guess) {
+        successfulGuess = true
+        letterObj.guessed = true
+      }
+      if (!letterObj.guessed) {
+        allGuessed = false
+      }
+    }
+    this.setState({word: wordCopy})
+
+    if (!successfulGuess) {
+      const newStep = this.state.step + 1
+      this.setState({step: newStep})
+      if (newStep === this.maxStep) {
+        this.setState({stage: "loser"})
+        return
+      }
+    }
+
+    if (allGuessed) {
+      this.setState({stage: "winner"})
+      return
+    }
+  }
+
+  resetGame() {
+    this.setState({
+      step: 0,
+      stage: "input",
+      word: [],
+      guess: null
+    })
   }
 
   render() {
     return (
       <div className="gameWindow">
 
+      <h3>Welcome to Hangman!</h3>
+
+      <ImageDisplay step={this.state.step}></ImageDisplay>
+
       {
-        !this.state.running ? 
-        <StartForm startGame={this.startGame} handleChange={this.handleFormStateChange}></StartForm> : null
+        this.state.stage === "input" ? 
+        <StartForm startGame={this.startGame} handleChange={this.handleWordStateChange}></StartForm> : null
       }
+
       {
-        this.state.running ? 
-        <Guesser processGuess={this.processGuess} handleChange={this.handleFormStateChange}></Guesser> : null
+        this.state.stage !== "input" ?
+        <HangmanWord word={this.state.word}></HangmanWord> : null
+      }
+
+      {
+        this.state.stage === "playing" ? 
+        <GuessForm processGuess={this.processGuess} handleChange={this.handleStateChange}></GuessForm> : null
+      }
+
+      {
+        this.state.stage === "winner" ?
+        <p>You won! Congratulations!</p> : null
+      }
+
+      {
+        this.state.stage === "loser" ?
+        <p>You lost! Try again next time!</p> : null
       }
 
       </div>
@@ -53,21 +122,30 @@ class App extends Component {
 }
 
 class StartForm extends Component {
+
+  handleKeyPress(keypressEvent) {
+    if (!keypressEvent.key.match(/[a-z]/i)) {
+      keypressEvent.preventDefault()
+      return
+    }
+  }
+
   render() {
     return (
       <div className="startForm">
-      <input
-        type="text"
-        placeholder="Enter a word"
-        onChange={e => this.props.handleChange("word", e.target.value)}
-      />
-      <button className="startButton" type="button" onClick={this.props.startGame}>Start Game</button>
+        <input
+          type="text"
+          placeholder="Enter a word"
+          onKeyPress={e => this.handleKeyPress(e)}
+          onChange={e => this.props.handleChange(e.target.value)}
+        />
+        <button className="startButton" type="button" onClick={this.props.startGame}>Start Game</button>
       </div>
     )
   }
 }
 
-class Guesser extends Component {
+class GuessForm extends Component {
   constructor(props) {
     super(props)
     this.state = {
@@ -75,10 +153,10 @@ class Guesser extends Component {
     }
   }
 
-  validateGuess(event) {
-    const theoreticalValue = this.state.formValue + event.key
-    if ((theoreticalValue.length > 1 || !event.key.match(/[a-z]/i)) && event.key !== "") {
-      event.preventDefault()
+  handleKeyPress(keypressEvent) {
+    const theoreticalValue = this.state.formValue + keypressEvent.key
+    if ((theoreticalValue.length > 1 || !keypressEvent.key.match(/[a-z]/i)) && keypressEvent.key !== "") {
+      keypressEvent.preventDefault()
       return
     }
   }
@@ -91,13 +169,42 @@ class Guesser extends Component {
   render() {
     return (
       <div className="guessForm">
-      <input
-        type="text"
-        placeholder="Guess a letter"
-        onKeyPress={e => this.validateGuess(e)}
-        onChange={e => this.sendGuess(e.target.value)}
-      />
-      <button className="guessButton" type="button" onClick={this.props.processGuess}>GUESS</button>
+        <input
+          type="text"
+          placeholder="Guess a letter"
+          onKeyPress={e => this.handleKeyPress(e)}
+          onChange={e => this.sendGuess(e.target.value.toLowerCase())}
+        />
+        <button className="guessButton" type="button" onClick={this.props.processGuess}>GUESS</button>
+      </div>
+    )
+  }
+}
+
+class HangmanWord extends Component {
+
+  render() {
+    const letters = []
+    for (let [index, letterObj] of this.props.word.entries()) {
+      letters.push(
+        <span key={index} className="hangmanLetter">{letterObj.guessed ? letterObj.letter.toUpperCase() : '_'}</span>
+      )
+    }
+
+    return (
+      <div className="hangmanWord">
+        {letters}
+      </div>
+    )
+  }
+}
+
+class ImageDisplay extends Component {
+
+  render() {
+    return (
+      <div className="imageDisplay">
+        <img alt={`Incorrect guesses: ${this.props.step}`}className="hangmanImage" src={`images/${this.props.step}.jpg`}></img>
       </div>
     )
   }
